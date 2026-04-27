@@ -1,0 +1,21 @@
+# Plant Disease Detector — Raspberry Pi 5
+# Install with: pip install -r requirements.txt
+
+# Core ML
+torch>=2.0.0
+torchvision>=0.15.0
+
+# YOLOv8 (Stage 1 - leaf detection)
+ultralytics>=8.0.43
+ultralyticsplus>=0.0.28
+
+# Image processing
+Pillow>=9.0.0
+opencv-python>=4.7.0
+
+# Utilities
+numpy>=1.23.0
+requests>=2.28.0
+
+# Optional: Pi Camera support
+# picamera2  # Uncomment if using official Pi Camera module
