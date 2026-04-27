@@ -69,23 +69,23 @@ CLASS_LABELS = [
 
 # Simple treatment suggestions per disease keyword
 TREATMENTS = {
-    "Scab":          "Apply fungicide (captan or myclobutanil). Remove infected leaves.",
-    "Black Rot":     "Prune infected areas. Apply copper-based fungicide.",
-    "Rust":          "Apply sulfur-based or triazole fungicide. Improve air circulation.",
-    "Powdery Mildew":"Apply potassium bicarbonate or neem oil spray.",
-    "Blight":        "Remove infected tissue. Apply copper fungicide. Avoid overhead watering.",
-    "Bacterial Spot":"Apply copper bactericide. Avoid wetting foliage.",
-    "Leaf Spot":     "Apply chlorothalonil fungicide. Remove fallen leaves.",
-    "Mosaic Virus":  "Remove infected plants. Control aphid vectors.",
-    "Curl Virus":    "Control whiteflies. Remove infected plants immediately.",
-    "Mold":          "Improve ventilation. Apply fungicide (chlorothalonil).",
-    "Esca":          "No cure; remove infected vines. Apply preventive fungicide.",
-    "Greening":      "No cure. Remove infected trees to prevent spread.",
-    "Cercospora":    "Apply strobilurin or triazole fungicide.",
-    "Common Rust":   "Apply fungicide at first sign. Use resistant varieties.",
-    "Spider Mites":  "Apply miticide or insecticidal soap. Increase humidity.",
-    "Scorch":        "Improve drainage. Apply appropriate fungicide.",
-    "Healthy":       "✅ No disease detected. Keep up good plant care!",
+    "Scab": "Apply fungicide (captan or myclobutanil). Remove infected leaves.",
+    "Black Rot": "Prune infected areas. Apply copper-based fungicide.",
+    "Rust": "Apply sulfur-based or triazole fungicide. Improve air circulation.",
+    "Powdery Mildew": "Apply potassium bicarbonate or neem oil spray.",
+    "Blight": "Remove infected tissue. Apply copper fungicide. Avoid overhead watering.",
+    "Bacterial Spot": "Apply copper bactericide. Avoid wetting foliage.",
+    "Leaf Spot": "Apply chlorothalonil fungicide. Remove fallen leaves.",
+    "Mosaic Virus": "Remove infected plants. Control aphid vectors.",
+    "Curl Virus": "Control whiteflies. Remove infected plants immediately.",
+    "Mold": "Improve ventilation. Apply fungicide (chlorothalonil).",
+    "Esca": "No cure; remove infected vines. Apply preventive fungicide.",
+    "Greening": "No cure. Remove infected trees to prevent spread.",
+    "Cercospora": "Apply strobilurin or triazole fungicide.",
+    "Common Rust": "Apply fungicide at first sign. Use resistant varieties.",
+    "Spider Mites": "Apply miticide or insecticidal soap. Increase humidity.",
+    "Scorch": "Improve drainage. Apply appropriate fungicide.",
+    "Healthy": "✅ No disease detected. Keep up good plant care!",
 }
 
 
@@ -100,6 +100,7 @@ def get_treatment(label: str) -> str:
 # Model Loading
 # ──────────────────────────────────────────────
 
+
 def load_yolo_model():
     """Load YOLOv8s leaf detection model from HuggingFace."""
     print("📦 Loading YOLOv8 leaf detection model...")
@@ -107,6 +108,7 @@ def load_yolo_model():
         import torch
         from ultralytics import YOLO
         from ultralytics.nn.tasks import DetectionModel
+
         torch.serialization.add_safe_globals([DetectionModel])
         model = YOLO("yolov8n.pt")
         print("✅ YOLOv8 model loaded.\n")
@@ -131,7 +133,9 @@ def load_mobilenet_model():
             print("   Download complete.")
         except Exception as e:
             print(f"⚠️  Download failed: {e}")
-            print("   Manually download from: https://huggingface.co/Daksh159/plant-disease-mobilenetv2")
+            print(
+                "   Manually download from: https://huggingface.co/Daksh159/plant-disease-mobilenetv2"
+            )
             return None
 
     # Build model architecture (must match training)
@@ -160,12 +164,13 @@ def load_mobilenet_model():
 # Inference
 # ──────────────────────────────────────────────
 
-MOBILENET_TRANSFORM = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406],
-                         [0.229, 0.224, 0.225]),
-])
+MOBILENET_TRANSFORM = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ]
+)
 
 
 def classify_leaf(mobilenet, pil_image: Image.Image):
@@ -175,7 +180,11 @@ def classify_leaf(mobilenet, pil_image: Image.Image):
         logits = mobilenet(tensor)
         probs = torch.softmax(logits, dim=1)
         conf, idx = torch.max(probs, dim=1)
-    label = CLASS_LABELS[idx.item()] if idx.item() < len(CLASS_LABELS) else f"Class {idx.item()}"
+    label = (
+        CLASS_LABELS[idx.item()]
+        if idx.item() < len(CLASS_LABELS)
+        else f"Class {idx.item()}"
+    )
     return label, conf.item()
 
 
@@ -213,13 +222,15 @@ def run_pipeline(frame_bgr, yolo_model, mobilenet_model, conf_thresh=0.25):
                 pil_crop = Image.fromarray(crop_rgb)
                 disease_label, disease_conf = classify_leaf(mobilenet_model, pil_crop)
 
-                results_list.append({
-                    "bbox": (x1, y1, x2, y2),
-                    "yolo_conf": yolo_conf,
-                    "disease": disease_label,
-                    "disease_conf": disease_conf,
-                    "treatment": get_treatment(disease_label),
-                })
+                results_list.append(
+                    {
+                        "bbox": (x1, y1, x2, y2),
+                        "yolo_conf": yolo_conf,
+                        "disease": disease_label,
+                        "disease_conf": disease_conf,
+                        "treatment": get_treatment(disease_label),
+                    }
+                )
 
                 # Draw bounding box
                 is_healthy = "healthy" in disease_label.lower()
@@ -230,9 +241,18 @@ def run_pipeline(frame_bgr, yolo_model, mobilenet_model, conf_thresh=0.25):
                 short_label = disease_label.split(" - ")[-1]  # e.g. "Late Blight"
                 text = f"{short_label} ({disease_conf:.0%})"
                 (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)
-                cv2.rectangle(annotated, (x1, y1 - th - 8), (x1 + tw + 4, y1), color, -1)
-                cv2.putText(annotated, text, (x1 + 2, y1 - 4),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 1)
+                cv2.rectangle(
+                    annotated, (x1, y1 - th - 8), (x1 + tw + 4, y1), color, -1
+                )
+                cv2.putText(
+                    annotated,
+                    text,
+                    (x1 + 2, y1 - 4),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.55,
+                    (255, 255, 255),
+                    1,
+                )
         else:
             # No YOLO detection — run classifier on full frame
             results_list = _classify_full_frame(frame_bgr, mobilenet_model, annotated)
@@ -252,10 +272,16 @@ def _classify_full_frame(frame_bgr, mobilenet_model, annotated):
     is_healthy = "healthy" in label.lower()
     color = (0, 200, 0) if is_healthy else (0, 60, 220)
     text = f"{label.split(' - ')[-1]} ({conf:.0%})"
-    cv2.putText(annotated, text, (10, 30),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
-    return [{"bbox": None, "disease": label, "disease_conf": conf,
-             "treatment": get_treatment(label), "yolo_conf": None}]
+    cv2.putText(annotated, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+    return [
+        {
+            "bbox": None,
+            "disease": label,
+            "disease_conf": conf,
+            "treatment": get_treatment(label),
+            "yolo_conf": None,
+        }
+    ]
 
 
 def print_results(results):
@@ -277,6 +303,7 @@ def print_results(results):
 # Entry Points
 # ──────────────────────────────────────────────
 
+
 def run_camera(yolo_model, mobilenet_model):
     """Live camera loop using Pi Camera or USB webcam."""
     print("📷 Starting camera... Press 'q' to quit, 's' to save frame.\n")
@@ -285,9 +312,13 @@ def run_camera(yolo_model, mobilenet_model):
     cap = None
     try:
         from picamera2 import Picamera2
+
         picam2 = Picamera2()
-        picam2.configure(picam2.create_preview_configuration(
-            main={"size": (640, 480), "format": "RGB888"}))
+        picam2.configure(
+            picam2.create_preview_configuration(
+                main={"size": (640, 480), "format": "RGB888"}
+            )
+        )
         picam2.start()
         use_picamera = True
         print("✅ Using PiCamera2")
@@ -326,8 +357,15 @@ def run_camera(yolo_model, mobilenet_model):
             # FPS overlay
             elapsed = time.time() - fps_time
             fps = frame_count / elapsed if elapsed > 0 else 0
-            cv2.putText(annotated, f"FPS: {fps:.1f}", (10, annotated.shape[0] - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1)
+            cv2.putText(
+                annotated,
+                f"FPS: {fps:.1f}",
+                (10, annotated.shape[0] - 10),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (200, 200, 200),
+                1,
+            )
 
             cv2.imshow("🌿 Plant Disease Detector", annotated)
 
@@ -388,12 +426,16 @@ def run_demo(mobilenet_model):
 # Main
 # ──────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(description="Plant Disease Detector — RPi 5")
     parser.add_argument("--image", type=str, help="Path to a leaf image file")
     parser.add_argument("--demo", action="store_true", help="Run demo without camera")
-    parser.add_argument("--no-yolo", action="store_true",
-                        help="Skip YOLO, classify full frame only (faster)")
+    parser.add_argument(
+        "--no-yolo",
+        action="store_true",
+        help="Skip YOLO, classify full frame only (faster)",
+    )
     args = parser.parse_args()
 
     print("\n🌿 Plant Disease Detection Pipeline")
