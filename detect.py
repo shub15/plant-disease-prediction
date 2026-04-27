@@ -104,8 +104,11 @@ def load_yolo_model():
     """Load YOLOv8s leaf detection model from HuggingFace."""
     print("📦 Loading YOLOv8 leaf detection model...")
     try:
+        import torch
         from ultralytics import YOLO
-        model = YOLO("foduucom/plant-leaf-detection-and-classification")
+        from ultralytics.nn.tasks import DetectionModel
+        torch.serialization.add_safe_globals([DetectionModel])
+        model = YOLO("yolov8n.pt")
         print("✅ YOLOv8 model loaded.\n")
         return model
     except Exception as e:
@@ -117,12 +120,12 @@ def load_yolo_model():
 def load_mobilenet_model():
     """Load MobileNetV2 plant disease classifier from HuggingFace."""
     print("📦 Loading MobileNetV2 disease classifier...")
-    model_path = os.path.join(os.path.dirname(__file__), "mobilenetv2_plant_disease.pth")
+    model_path = os.path.join(os.path.dirname(__file__), "mobilenetv2_plant.pth")
 
     # Download model weights if not cached
     if not os.path.exists(model_path):
         print("   Downloading model weights from HuggingFace (~14MB)...")
-        url = "https://huggingface.co/Daksh159/plant-disease-mobilenetv2/resolve/main/mobilenetv2_plant_disease.pth"
+        url = "https://huggingface.co/Daksh159/plant-disease-mobilenetv2/blob/main/mobilenetv2_plant.pth"
         try:
             urllib.request.urlretrieve(url, model_path)
             print("   Download complete.")
@@ -139,7 +142,7 @@ def load_mobilenet_model():
     )
 
     try:
-        state = torch.load(model_path, map_location="cpu")
+        state = torch.load(model_path, map_location="cpu", weights_only=False)
         # Handle both raw state_dict and wrapped checkpoints
         if isinstance(state, dict) and "model_state_dict" in state:
             state = state["model_state_dict"]
