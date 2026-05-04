@@ -77,7 +77,7 @@ def generate_frames():
     global camera_cap, camera_active
 
     if camera_cap is None:
-        camera_cap = cv2.VideoCapture(0)
+        camera_cap = cv2.VideoCapture("http://192.168.0.103:8080/video")
         camera_cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         camera_cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 

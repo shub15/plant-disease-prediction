@@ -125,9 +125,9 @@ def load_yolo_model():
 
 
 def load_mobilenet_model():
-    """Load MobileNetV3-Large plant disease classifier."""
-    print("📦 Loading MobileNetV3-Large disease classifier...")
-    model_path = os.path.join(os.path.dirname(__file__), "best_mobilenetv3_large.pth")
+    """Load MobileNetV2 plant disease classifier."""
+    print("📦 Loading MobileNetV2 disease classifier...")
+    model_path = os.path.join(os.path.dirname(__file__), "mobilenetv2_plant.pth")
 
     # Download model weights if not cached
     if not os.path.exists(model_path):
@@ -144,10 +144,13 @@ def load_mobilenet_model():
             return None
 
     # Build model architecture (must match training)
-    model = models.mobilenet_v3_large(weights=None)
-    # Replace the final classifier head to match 38 classes
-    num_ftrs = model.classifier[3].in_features
-    model.classifier[3] = torch.nn.Linear(num_ftrs, 38)
+    model = models.mobilenet_v2(pretrained=True)
+    for p in model.features.parameters():
+        p.requires_grad = False  # freeze feature extractor
+    model.classifier[1] = torch.nn.Sequential(
+        torch.nn.Dropout(0.2),
+        torch.nn.Linear(model.classifier[1].in_features, 38),
+    )
 
     try:
         state = torch.load(model_path, map_location="cpu", weights_only=False)
@@ -160,7 +163,7 @@ def load_mobilenet_model():
         print("   The model will run but predictions may be random.")
 
     model.eval()
-    print("✅ MobileNetV3-Large model loaded.\n")
+    print("✅ MobileNetV2 model loaded.\n")
     return model
 
 
@@ -233,16 +236,16 @@ def run_pipeline(frame_bgr, yolo_model, mobilenet_model, conf_thresh=0.25):
                 disease_label, disease_conf = classify_leaf(mobilenet_model, pil_crop)
                 
                 # Apply Temporal Smoothing (Majority Vote over last 7 frames)
-                prediction_history.append(disease_label)
-                vote_counts = Counter(prediction_history)
-                smoothed_label, _ = vote_counts.most_common(1)[0]
+                # prediction_history.append(disease_label)
+                # vote_counts = Counter(prediction_history)
+                # smoothed_label, _ = vote_counts.most_common(1)[0]
                 
-                # If the smoothed label differs from current, average the confidence
-                if smoothed_label != disease_label:
-                    # Penalty for fluctuating
-                    disease_conf = max(0.0, disease_conf - 0.2)
+                # # If the smoothed label differs from current, average the confidence
+                # if smoothed_label != disease_label:
+                #     # Penalty for fluctuating
+                #     disease_conf = max(0.0, disease_conf - 0.2)
                 
-                disease_label = smoothed_label
+                # disease_label = smoothed_label
 
                 # Extract plant and specific disease correctly from MobileNet
                 if " - " in disease_label:
