@@ -22,6 +22,8 @@ from PIL import Image
 import torch
 import torchvision.transforms as transforms
 from torchvision import models
+from collections import deque
+from collections import Counter
 
 # ──────────────────────────────────────────────
 # 38 PlantVillage Class Labels
@@ -123,13 +125,13 @@ def load_yolo_model():
 
 
 def load_mobilenet_model():
-    """Load MobileNetV2 plant disease classifier from HuggingFace."""
-    print("📦 Loading MobileNetV2 disease classifier...")
-    model_path = os.path.join(os.path.dirname(__file__), "mobilenetv2_plant.pth")
+    """Load MobileNetV3-Large plant disease classifier."""
+    print("📦 Loading MobileNetV3-Large disease classifier...")
+    model_path = os.path.join(os.path.dirname(__file__), "best_mobilenetv3_large.pth")
 
     # Download model weights if not cached
     if not os.path.exists(model_path):
-        print("   Downloading model weights from HuggingFace (~14MB)...")
+        print("   Downloading fallback model weights (~14MB)...")
         url = "https://huggingface.co/Daksh159/plant-disease-mobilenetv2/blob/main/mobilenetv2_plant.pth"
         try:
             urllib.request.urlretrieve(url, model_path)
@@ -142,11 +144,10 @@ def load_mobilenet_model():
             return None
 
     # Build model architecture (must match training)
-    model = models.mobilenet_v2(weights=None)
-    model.classifier[1] = torch.nn.Sequential(
-        torch.nn.Dropout(0.2),
-        torch.nn.Linear(model.classifier[1].in_features, 38),
-    )
+    model = models.mobilenet_v3_large(weights=None)
+    # Replace the final classifier head to match 38 classes
+    num_ftrs = model.classifier[3].in_features
+    model.classifier[3] = torch.nn.Linear(num_ftrs, 38)
 
     try:
         state = torch.load(model_path, map_location="cpu", weights_only=False)
@@ -159,7 +160,7 @@ def load_mobilenet_model():
         print("   The model will run but predictions may be random.")
 
     model.eval()
-    print("✅ MobileNetV2 model loaded.\n")
+    print("✅ MobileNetV3-Large model loaded.\n")
     return model
 
 
@@ -191,11 +192,15 @@ def classify_leaf(mobilenet, pil_image: Image.Image):
     return label, conf.item()
 
 
+# Global history for temporal smoothing of predictions
+prediction_history = deque(maxlen=7)
+
 def run_pipeline(frame_bgr, yolo_model, mobilenet_model, conf_thresh=0.25):
     """
-    Full 2-stage pipeline on a BGR numpy frame.
+    Full 2-stage pipeline with temporal smoothing.
     Returns annotated frame + list of result dicts.
     """
+    global prediction_history
     results_list = []
     annotated = frame_bgr.copy()
 
@@ -222,17 +227,36 @@ def run_pipeline(frame_bgr, yolo_model, mobilenet_model, conf_thresh=0.25):
                 if crop_bgr.size == 0:
                     continue
 
-                # ── Stage 2: MobileNetV2 disease classification ──
+                # ── Stage 2: MobileNet classification ──
                 crop_rgb = cv2.cvtColor(crop_bgr, cv2.COLOR_BGR2RGB)
                 pil_crop = Image.fromarray(crop_rgb)
                 disease_label, disease_conf = classify_leaf(mobilenet_model, pil_crop)
+                
+                # Apply Temporal Smoothing (Majority Vote over last 7 frames)
+                prediction_history.append(disease_label)
+                vote_counts = Counter(prediction_history)
+                smoothed_label, _ = vote_counts.most_common(1)[0]
+                
+                # If the smoothed label differs from current, average the confidence
+                if smoothed_label != disease_label:
+                    # Penalty for fluctuating
+                    disease_conf = max(0.0, disease_conf - 0.2)
+                
+                disease_label = smoothed_label
+
+                # Extract plant and specific disease correctly from MobileNet
+                if " - " in disease_label:
+                    actual_plant, actual_disease = disease_label.split(" - ", 1)
+                else:
+                    actual_plant = "Unknown"
+                    actual_disease = disease_label
 
                 results_list.append(
                     {
                         "bbox": (x1, y1, x2, y2),
                         "yolo_conf": yolo_conf,
-                        "plant": plant_species.capitalize(),
-                        "disease": disease_label,
+                        "plant": actual_plant,
+                        "disease": actual_disease,
                         "disease_conf": disease_conf,
                         "treatment": get_treatment(disease_label),
                     }
@@ -244,7 +268,7 @@ def run_pipeline(frame_bgr, yolo_model, mobilenet_model, conf_thresh=0.25):
                 cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 2)
 
                 # Label background
-                short_label = disease_label.split(" - ")[-1]  # e.g. "Late Blight"
+                short_label = actual_disease
                 text = f"{short_label} ({disease_conf:.0%})"
                 (tw, th), _ = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.55, 1)
                 cv2.rectangle(
@@ -274,16 +298,23 @@ def _classify_full_frame(frame_bgr, mobilenet_model, annotated):
     rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
     pil_img = Image.fromarray(rgb)
     label, conf = classify_leaf(mobilenet_model, pil_img)
+    
+    if " - " in label:
+        actual_plant, actual_disease = label.split(" - ", 1)
+    else:
+        actual_plant = "Unknown"
+        actual_disease = label
+        
     h, w = frame_bgr.shape[:2]
-    is_healthy = "healthy" in label.lower()
+    is_healthy = "healthy" in actual_disease.lower()
     color = (0, 200, 0) if is_healthy else (0, 60, 220)
-    text = f"{label.split(' - ')[-1]} ({conf:.0%})"
+    text = f"{actual_disease} ({conf:.0%})"
     cv2.putText(annotated, text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
     return [
         {
             "bbox": None,
-            "plant": "Unknown",
-            "disease": label,
+            "plant": actual_plant,
+            "disease": actual_disease,
             "disease_conf": conf,
             "treatment": get_treatment(label),
             "yolo_conf": None,
