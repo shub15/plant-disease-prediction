@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="main-canvas">
+  <!-- Left Panel - Camera/Upload -->
+  <div class="left-panel">
+    <!-- Mode Selection -->
+    <div class="mode-panel capability-card">
+      <h2 class="feature-heading">Mode</h2>
+      <div class="radio-group">
+        <label class="radio-option button-pill-outline">
+          <input type="radio" name="mode" value="camera" checked>
+          <span class="radio-label">Live Camera</span>
+        </label>
+        <label class="radio-option button-pill-outline">
+          <input type="radio" name="mode" value="upload">
+          <span class="radio-label">Upload Image</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="settings-panel capability-card">
+      <h3 class="feature-heading">Model Configuration</h3>
+      <div class="setting-item">
+        <label class="checkbox-label">
+          <input type="checkbox" id="noYolo" name="no_yolo">
+          <span>Skip YOLO detection (faster)</span>
+        </label>
+      </div>
+      <div class="setting-item">
+        <label for="confidence" class="mono-label">Confidence Threshold:</label>
+        <input type="range" id="confidence" name="confidence" min="0.1" max="0.9" step="0.05" value="0.25">
+        <span class="range-value mono-label">0.25</span>
+      </div>
+    </div>
+
+    <!-- Camera Controls (Camera Mode) -->
+    <div id="cameraControls" class="camera-controls product-card">
+      <div class="video-container">
+        <img id="videoFeed" class="video-feed" src="" alt="Camera feed will appear here" style="display: none;">
+        <div id="videoPlaceholder" class="video-placeholder">
+          <p class="body-large">Camera is not active</p>
+        </div>
+      </div>
+      <div class="control-buttons">
+        <button id="startCamera" class="button-primary">Start Camera</button>
+        <button id="stopCamera" class="button-pill-outline" disabled>Stop Camera</button>
+        <button id="saveSnapshot" class="button-pill-outline" disabled>Save Snapshot</button>
+      </div>
+    </div>
+
+    <!-- Upload Controls (Upload Mode) -->
+    <div id="uploadControls" class="upload-controls" style="display: none;">
+      <div class="file-upload contact-form-card">
+        <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+        <div class="upload-area" id="uploadArea">
+          <p class="body-large">Drag & drop an image here or click to browse</p>
+          <button id="browseButton" class="button-primary">Browse Files</button>
+        </div>
+      </div>
+      <div id="uploadedImage" class="uploaded-image hero-photo-card" style="display: none;">
+        <img id="processedImage" src="" alt="Processed image">
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel - Results -->
+  <div class="right-panel">
+    <h2 class="section-heading">Detection Results</h2>
+
+    <!-- Summary Statistics -->
+    <div id="summaryStats" class="summary-stats dark-feature-band" style="display: none;">
+      <div class="stat-card">
+        <div class="stat-label mono-label">Total Leaves</div>
+        <div class="stat-value product-display" id="totalLeaves">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label mono-label">Healthy</div>
+        <div class="stat-value product-display" id="healthyCount">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label mono-label">Diseased</div>
+        <div class="stat-value product-display" id="diseasedCount">0</div>
+      </div>
+    </div>
+
+    <!-- Results Container -->
+    <div id="resultsContainer" class="results-container">
+      <div class="empty-state contact-form-card">
+        <p class="body-large">No detections yet. Start camera or upload an image to begin.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="loading-overlay" style="display: none;">
+  <div class="spinner"></div>
+  <p class="body-large">Processing image...</p>
+</div>
+{% endblock %}

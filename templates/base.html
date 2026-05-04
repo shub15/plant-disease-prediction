@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Plant Disease Detector{% endblock %}</title>
+  <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+  {% block head %}{% endblock %}
+</head>
+
+<body>
+  <div class="cohere-app">
+    <!-- Header -->
+    <header class="hero-banner">
+      <div class="hero-content">
+        <h1 class="hero-display">Plant Disease Detector</h1>
+        <p class="body-large">AI-powered leaf disease detection using YOLOv8 + MobileNetV2</p>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-canvas">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+
+  <!-- Footer Scripts -->
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+
+</html>

@@ -1,0 +1,869 @@
+/* Cohere Design System - Plant Disease Detector - Flask Version */
+
+/* Colors from DESIGN.md */
+:root {
+  --primary: #17171c;
+  --cohere-black: #000000;
+  --ink: #212121;
+  --deep-green: #003c33;
+  --dark-navy: #071829;
+  --canvas: #ffffff;
+  --soft-stone: #eeece7;
+  --pale-green: #edfce9;
+  --pale-blue: #f1f5ff;
+  --hairline: #d9d9dd;
+  --border-light: #e5e7eb;
+  --card-border: #f2f2f2;
+  --muted: #93939f;
+  --slate: #75758a;
+  --body-muted: #616161;
+  --action-blue: #1863dc;
+  --focus-blue: #4c6ee6;
+  --coral: #ff7759;
+  --coral-soft: #ffad9b;
+  --form-focus: #9b60aa;
+  --on-primary: #ffffff;
+  --on-dark: #ffffff;
+  --error: #b30000;
+}
+
+/* Typography Scale - Mobile First */
+.hero-display {
+  font-family: "CohereText", "Space Grotesk", Inter, ui-sans-serif, system-ui;
+  font-size: clamp(2rem, 5vw + 1rem, 6rem);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.product-display {
+  font-family: "CohereText", "Space Grotesk", Inter, ui-sans-serif, system-ui;
+  font-size: clamp(1.75rem, 4vw + 0.5rem, 4.5rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.section-display {
+  font-family: "Unica77 Cohere Web", Inter, Arial, ui-sans-serif, system-ui;
+  font-size: clamp(1.5rem, 3vw + 0.5rem, 3.75rem);
+  font-weight: 400;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.section-heading {
+  font-family: "Unica77 Cohere Web", Inter, Arial, ui-sans-serif, system-ui;
+  font-size: clamp(1.25rem, 2.5vw + 0.5rem, 3rem);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.card-heading {
+  font-family: "Unica77 Cohere Web", Inter, Arial, ui-sans-serif, system-ui;
+  font-size: clamp(1.125rem, 2vw + 0.25rem, 2rem);
+  font-weight: 400;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.feature-heading {
+  font-family: "Unica77 Cohere Web", Inter, Arial, ui-sans-serif, system-ui;
+  font-size: clamp(1rem, 1.5vw + 0.5rem, 1.5rem);
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.body-large {
+  font-family: "Unica77 Cohere Web", Inter, Arial, ui-sans-serif, system-ui;
+  font-size: clamp(1rem, 1.2vw + 0.5rem, 1.125rem);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.body {
+  font-family: "Unica77 Cohere Web", Inter, Arial, ui-sans-serif, system-ui;
+  font-size: clamp(0.875rem, 1vw + 0.25rem, 1rem);
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.button {
+  font-family: "Unica77 Cohere Web", Inter, Arial, ui-sans-serif, system-ui;
+  font-size: clamp(0.875rem, 0.8vw + 0.5rem, 0.875rem);
+  font-weight: 500;
+  line-height: 1.71;
+  letter-spacing: 0;
+}
+
+.caption {
+  font-family: "Unica77 Cohere Web", Inter, Arial, ui-sans-serif, system-ui;
+  font-size: clamp(0.75rem, 0.8vw + 0.25rem, 0.875rem);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.mono-label {
+  font-family: "CohereMono", monospace, ui-monospace, system-ui;
+  font-size: clamp(0.75rem, 0.8vw + 0.25rem, 0.875rem);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+.micro {
+  font-family: "Unica77 Cohere Web", Inter, Arial, ui-sans-serif, system-ui;
+  font-size: clamp(0.625rem, 0.6vw + 0.2rem, 0.75rem);
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+/* Border Radius */
+.rounded-xs {
+  border-radius: 4px;
+}
+
+.rounded-sm {
+  border-radius: 8px;
+}
+
+.rounded-md {
+  border-radius: 16px;
+}
+
+.rounded-lg {
+  border-radius: 22px;
+}
+
+.rounded-xl {
+  border-radius: 30px;
+}
+
+.rounded-pill {
+  border-radius: 32px;
+}
+
+.rounded-full {
+  border-radius: 9999px;
+}
+
+/* Reset and Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Arial', sans-serif;
+  color: var(--ink);
+  background-color: var(--canvas);
+  line-height: 1.5;
+  overflow-x: hidden;
+}
+
+/* App Container */
+.cohere-app {
+  min-height: 100vh;
+}
+
+/* Main Canvas Layout - Mobile First */
+.main-canvas {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  padding: 1rem;
+  max-width: 100%;
+  container-type: inline-size;
+  container-name: mainCanvas;
+}
+
+/* Tablet and up */
+@media (min-width: 768px) {
+  .main-canvas {
+    grid-template-columns: minmax(320px, 420px) 1fr;
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+}
+
+/* Desktop and up */
+@media (min-width: 1024px) {
+  .main-canvas {
+    gap: 1.5rem;
+    padding: 1.5rem;
+  }
+}
+
+/* Large Desktop */
+@media (min-width: 1440px) {
+  .main-canvas {
+    max-width: 1600px;
+    margin: 0 auto;
+    grid-template-columns: minmax(380px, 480px) 1fr;
+    gap: 1.5rem;
+  }
+}
+
+/* Hero Banner - Flat primary surface per Cohere - Mobile First */
+.hero-banner {
+  padding: clamp(2.5rem, 5vw, 5rem) 1rem;
+  background-color: var(--primary);
+  color: var(--on-dark);
+  text-align: center;
+}
+
+.hero-display {
+  color: var(--on-dark);
+  margin-bottom: 1rem;
+}
+
+.hero-content p {
+  font-size: clamp(1rem, 1.5vw + 0.5rem, 1.25rem);
+  line-height: 1.4;
+}
+
+/* Tablet and up */
+@media (min-width: 768px) {
+  .hero-banner {
+    padding: clamp(3.75rem, 8vw, 6rem) 1.5rem;
+  }
+}
+
+/* Components */
+
+/* Button Primary - Flat CTA - Mobile Friendly */
+.button-primary {
+  background-color: var(--primary);
+  color: var(--on-primary);
+  font-size: clamp(0.875rem, 0.8vw + 0.5rem, 0.875rem);
+  font-weight: 500;
+  line-height: 1.71;
+  border-radius: 2rem;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 12px 24px;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.15s ease;
+  letter-spacing: 0;
+  white-space: nowrap;
+  touch-action: manipulation;
+}
+
+.button-primary:hover {
+  background-color: var(--cohere-black);
+  transform: translateY(-1px);
+}
+
+/* Button Pill Outline - Mobile Friendly */
+.button-pill-outline {
+  background-color: transparent;
+  color: var(--primary);
+  font-size: clamp(0.875rem, 0.8vw + 0.5rem, 0.875rem);
+  font-weight: 500;
+  line-height: 1.71;
+  border-radius: 2rem;
+  padding: 10px 20px;
+  min-height: 44px;
+  min-width: 44px;
+  border: 1px solid var(--primary);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-block;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  touch-action: manipulation;
+  text-align: center;
+}
+
+.button-pill-outline:hover {
+  background-color: var(--primary);
+  color: var(--on-primary);
+}
+
+/* Button disabled state */
+.button-primary:disabled,
+.button-pill-outline:disabled {
+  background-color: var(--muted);
+  border-color: var(--muted);
+  cursor: not-allowed;
+  transform: none;
+  color: var(--on-primary);
+  opacity: 0.5;
+}
+
+/* Capability Card - Flat surface, hairline border - Mobile First */
+.capability-card {
+  background-color: var(--canvas);
+  color: var(--ink);
+  border-radius: clamp(0.5rem, 1vw, 0.75rem);
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border: 1px solid var(--hairline);
+}
+
+.capability-card h2,
+.capability-card h3 {
+  font-size: clamp(1.125rem, 2vw + 0.5rem, 1.5rem);
+  font-weight: 400;
+  line-height: 1.3;
+  margin-bottom: 1rem;
+  color: var(--primary);
+}
+
+/* Product Card - Mobile First */
+.product-card {
+  background-color: var(--soft-stone);
+  color: var(--ink);
+  border-radius: clamp(0.5rem, 1vw, 0.75rem);
+  padding: clamp(1.5rem, 3vw, 2rem);
+}
+
+/* Dark Feature Band - Mobile First */
+.dark-feature-band {
+  background-color: var(--deep-green);
+  color: var(--on-dark);
+  border-radius: clamp(0.75rem, 1.5vw, 1rem);
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+}
+
+/* Product Card */
+.product-card {
+  background-color: var(--soft-stone);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 32px;
+}
+
+/* Dark Feature Band */
+.dark-feature-band {
+  background-color: var(--deep-green);
+  color: var(--on-dark);
+  border-radius: 16px;
+  padding: 40px;
+}
+
+/* Contact Form Card */
+.contact-form-card {
+  background-color: var(--canvas);
+  color: var(--ink);
+  border-radius: 22px;
+  padding: 32px;
+  border: 1px solid var(--card-border);
+}
+
+/* Hero Photo Card */
+.hero-photo-card {
+  background-color: var(--canvas);
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.hero-photo-card img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Left Panel */
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Mode Panel */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  width: 100%;
+}
+
+.radio-option input[type="radio"] {
+  margin-right: 8px;
+}
+
+.radio-label {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.71;
+}
+
+/* Settings Panel */
+.setting-item {
+  margin-bottom: 16px;
+}
+
+.setting-item:last-child {
+  margin-bottom: 0;
+}
+
+.setting-item label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.28px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.setting-item input[type="range"] {
+  width: 100%;
+  margin: 8px 0;
+}
+
+.range-value {
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  letter-spacing: 0.28px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.checkbox-label input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+/* Camera Controls - Improved UX - Mobile First */
+.video-container {
+  position: relative;
+  width: 100%;
+  height: clamp(200px, 50vw, 400px);
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--hairline);
+  border-radius: clamp(0.75rem, 1.5vw, 1rem);
+  background-color: var(--hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  aspect-ratio: 4/3;
+}
+
+.video-feed {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: clamp(0.75rem, 1.5vw, 1rem);
+}
+
+.video-placeholder {
+  text-align: center;
+  color: var(--muted);
+}
+
+.video-placeholder .body-large {
+  margin-top: 12px;
+}
+
+.control-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+@container mainCanvas (min-width: 768px) {
+  .control-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Upload Controls - Enhanced UX */
+.upload-area {
+  border: 2px dashed var(--border-light);
+  border-radius: 22px;
+  padding: 48px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background-color: var(--canvas);
+}
+
+.upload-area:hover {
+  border-color: var(--primary);
+  background-color: var(--pale-blue);
+}
+
+.uploaded-image {
+  margin-top: 24px;
+}
+
+#processedImage {
+  width: 100%;
+  height: auto;
+  border-radius: 22px;
+  border: 1px solid var(--card-border);
+}
+
+/* Right Panel */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+
+}
+
+.right-panel h2 {
+  color: var(--primary);
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+/* Summary Statistics */
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.stat-card {
+  text-align: center;
+}
+
+.stat-label {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: 0.28px;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  color: var(--muted);
+}
+
+.dark-feature-band .stat-label {
+  color: var(--on-dark);
+}
+
+.stat-value {
+  font-size: 48px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--primary);
+}
+
+.dark-feature-band .stat-value {
+  color: var(--on-dark);
+}
+
+/* Results Container */
+.results-container {
+  min-height: 400px;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--muted);
+  padding: 80px 24px;
+}
+
+/* Result cards that could appear in results */
+.result-card {
+  background-color: var(--canvas);
+  color: var(--ink);
+  border-radius: 8px;
+  padding: 24px;
+  border: 1px solid var(--hairline);
+  margin-bottom: 16px;
+  transition: all 0.15s ease;
+}
+
+.result-card:hover {
+  border-color: var(--primary);
+}
+
+.result-card h4 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--ink);
+}
+
+.result-card p {
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--body-muted);
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(23, 23, 28, 0.9);
+  color: var(--on-dark);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid var(--muted);
+  border-top: 4px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 24px;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* About Panel */
+.about-panel h3 {
+  color: var(--primary);
+}
+
+.info-box {
+  color: var(--ink);
+}
+
+.info-box p {
+  margin-bottom: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .main-canvas {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    gap: 20px;
+  }
+
+  .left-panel,
+  .right-panel {
+    display: contents;
+  }
+
+  .mode-panel {
+    order: 1;
+  }
+
+  #cameraControls,
+  #uploadControls {
+    order: 2;
+  }
+
+  .right-panel h2.section-heading,
+  .right-panel h2 {
+    order: 3;
+  }
+
+  #summaryStats {
+    order: 4;
+  }
+
+  #resultsContainer {
+    order: 5;
+  }
+
+  .settings-panel {
+    order: 6;
+  }
+
+  .about-panel {
+    order: 7;
+  }
+
+  .hero-banner {
+    padding: 64px 24px;
+  }
+
+  .hero-display {
+    font-size: 36px;
+    letter-spacing: -0.72px;
+  }
+
+  .summary-stats {
+    grid-template-columns: 1fr;
+    background-color: var(--deep-green);
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  .stat-value {
+    font-size: 36px;
+    letter-spacing: -0.72px;
+  }
+}
+
+/* Tablet (768-1024px) */
+@media (max-width: 1024px) and (min-width: 768px) {
+  .video-container {
+    height: 400px;
+  }
+
+  .control-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Mobile (425-640px) - Small Mobile */
+@media (max-width: 640px) {
+  .hero-banner {
+    padding: 48px 20px;
+  }
+
+  .hero-display {
+    font-size: 32px;
+    letter-spacing: -0.64px;
+    line-height: 1.1;
+  }
+
+  .section-heading {
+    font-size: 28px;
+    letter-spacing: -0.28px;
+  }
+
+  .main-canvas {
+    padding: 16px 12px;
+    gap: 16px;
+  }
+
+  .capability-card,
+  .product-card,
+  .contact-form-card {
+    padding: 20px;
+    border-radius: 8px;
+  }
+
+  .video-container {
+    height: 250px;
+    border-radius: 12px;
+  }
+
+  .control-buttons {
+    gap: 8px;
+  }
+
+  .button-primary,
+  .button-pill-outline {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+
+  .radio-group {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .radio-option {
+    flex: 1;
+  }
+
+  .upload-area {
+    padding: 32px 16px;
+  }
+
+  .summary-stats {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 20px;
+    border-radius: 12px;
+  }
+
+  .stat-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+    letter-spacing: -0.48px;
+  }
+
+  .empty-state {
+    padding: 60px 20px;
+  }
+
+  .loading-overlay {
+    padding: 0 20px;
+  }
+}
+
+/* Small Mobile (<425px) */
+@media (max-width: 425px) {
+  .hero-display {
+    font-size: 28px;
+    letter-spacing: -0.56px;
+  }
+
+  .hero-banner {
+    padding: 40px 16px;
+  }
+
+  .capability-card,
+  .product-card {
+    padding: 16px;
+  }
+
+  .video-container {
+    height: 200px;
+    border-radius: 8px;
+  }
+
+  .stat-value {
+    font-size: 20px;
+  }
+}
+
+/* Large Desktop >1440px */
+@media (min-width: 1440px) {
+  .main-canvas {
+    max-width: 1600px;
+    margin: 0 auto;
+    grid-template-columns: 480px 1fr;
+  }
+
+  .hero-banner {
+    padding: 96px 24px;
+  }
+
+  .hero-display {
+    font-size: 56px;
+  }
+}

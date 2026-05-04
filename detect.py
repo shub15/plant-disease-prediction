@@ -107,15 +107,18 @@ def load_yolo_model():
     try:
         import torch
         from ultralytics import YOLO
-        from ultralytics.nn.tasks import DetectionModel
+        from unittest.mock import patch
 
-        torch.serialization.add_safe_globals([DetectionModel])
-        model = YOLO("yolov8n.pt")
+        # Force weights_only=False for YOLO loading (required for PyTorch 2.6+)
+        # We capture the original torch.load to avoid infinite recursion in the mock
+        orig_load = torch.load
+        with patch("torch.load", side_effect=lambda *args, **kwargs: orig_load(*args, **{**kwargs, "weights_only": False})):
+            model = YOLO("best.pt")
+        
         print("✅ YOLOv8 model loaded.\n")
         return model
     except Exception as e:
         print(f"⚠️  YOLOv8 load failed: {e}")
-        print("    Run: pip install ultralytics")
         return None
 
 
@@ -205,6 +208,8 @@ def run_pipeline(frame_bgr, yolo_model, mobilenet_model, conf_thresh=0.25):
             for box in boxes:
                 x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
                 yolo_conf = float(box.conf[0])
+                class_id = int(box.cls[0])
+                plant_species = yolo_model.names[class_id]
 
                 # Crop detected leaf region
                 pad = 10
@@ -226,6 +231,7 @@ def run_pipeline(frame_bgr, yolo_model, mobilenet_model, conf_thresh=0.25):
                     {
                         "bbox": (x1, y1, x2, y2),
                         "yolo_conf": yolo_conf,
+                        "plant": plant_species.capitalize(),
                         "disease": disease_label,
                         "disease_conf": disease_conf,
                         "treatment": get_treatment(disease_label),
@@ -254,8 +260,8 @@ def run_pipeline(frame_bgr, yolo_model, mobilenet_model, conf_thresh=0.25):
                     1,
                 )
         else:
-            # No YOLO detection — run classifier on full frame
-            results_list = _classify_full_frame(frame_bgr, mobilenet_model, annotated)
+            # No YOLO detection — do not fall back to full frame to avoid phantom predictions
+            results_list = []
     else:
         # YOLO unavailable — classify full frame
         results_list = _classify_full_frame(frame_bgr, mobilenet_model, annotated)
@@ -276,6 +282,7 @@ def _classify_full_frame(frame_bgr, mobilenet_model, annotated):
     return [
         {
             "bbox": None,
+            "plant": "Unknown",
             "disease": label,
             "disease_conf": conf,
             "treatment": get_treatment(label),
@@ -291,6 +298,7 @@ def print_results(results):
         print("  No leaf detected in frame.")
     for i, r in enumerate(results, 1):
         print(f"  Leaf #{i}")
+        print(f"  🌳 Plant   : {r['plant']}")
         print(f"  🌿 Disease : {r['disease']}")
         print(f"  📊 Confidence: {r['disease_conf']:.1%}")
         print(f"  💊 Treatment : {r['treatment']}")
@@ -310,31 +318,54 @@ def run_camera(yolo_model, mobilenet_model):
 
     # Try PiCamera2 first, fall back to OpenCV
     cap = None
+    use_picamera = False
+
+    # Check if we're on Raspberry Pi (not Kali Linux)
     try:
         from picamera2 import Picamera2
-
-        picam2 = Picamera2()
-        picam2.configure(
-            picam2.create_preview_configuration(
-                main={"size": (640, 480), "format": "RGB888"}
+        # Additional check: Picamera2 might import but not work on non-Pi systems
+        import platform
+        if 'aarch64' in platform.platform() and 'raspi' in platform.release().lower():
+            picam2 = Picamera2()
+            picam2.configure(
+                picam2.create_preview_configuration(
+                    main={"size": (640, 480), "format": "RGB888"}
+                )
             )
-        )
-        picam2.start()
-        use_picamera = True
-        print("✅ Using PiCamera2")
+            picam2.start()
+            use_picamera = True
+            print("✅ Using PiCamera2")
+        else:
+            raise ImportError("Not on Raspberry Pi")
     except ImportError:
         use_picamera = False
         cap = cv2.VideoCapture(0)
+        if not cap.isOpened():
+            print("❌ Could not open USB camera. Check if it's plugged in or used by another app.")
+            return
+
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        
+        # Warm-up camera (discard first few frames to stabilize exposure)
+        print("⏳ Warming up camera...")
+        for _ in range(5):
+            cap.read()
         print("✅ Using USB/OpenCV camera")
 
+    win_name = "Plant Disease Detector"
+    cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
+    
+    last_annotated = None
+    last_results = []
     frame_count = 0
     fps_time = time.time()
+    
+    print("📷 Camera started. 'q'=Quit, 's'=Save.\n")
 
     try:
         while True:
-            # Grab frame
+            # 1. Grab fresh frame
             if use_picamera:
                 frame_rgb = picam2.capture_array()
                 frame = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
@@ -346,36 +377,47 @@ def run_camera(yolo_model, mobilenet_model):
 
             frame_count += 1
 
-            # Run pipeline every 5th frame to keep UI smooth
-            if frame_count % 5 == 0:
-                annotated, results = run_pipeline(frame, yolo_model, mobilenet_model)
+            # 2. Process every 5th frame (or first frame)
+            if frame_count % 5 == 0 or last_annotated is None:
+                # We run the pipeline on a COPY of the frame so we don't mess up the live one
+                processed_frame, results = run_pipeline(frame.copy(), yolo_model, mobilenet_model)
+                last_annotated = processed_frame
+                last_results = results
                 if results:
                     print_results(results)
-            else:
-                annotated = frame
+
+            # 3. Display Logic
+            # To keep it smooth, we show the LIVE frame but with the LAST annotations
+            # However, since run_pipeline draws ON the frame, we'll just show the last processed_frame
+            # if we want the annotations to stay. If we want smooth live video, we'd need to
+            # draw the last_results on the current 'frame'. 
+            # For simplicity and to fix "blank pictures", we'll show last_annotated.
+            
+            display_frame = last_annotated if last_annotated is not None else frame
 
             # FPS overlay
             elapsed = time.time() - fps_time
             fps = frame_count / elapsed if elapsed > 0 else 0
             cv2.putText(
-                annotated,
+                display_frame,
                 f"FPS: {fps:.1f}",
-                (10, annotated.shape[0] - 10),
+                (10, display_frame.shape[0] - 10),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
                 (200, 200, 200),
                 1,
             )
 
-            cv2.imshow("🌿 Plant Disease Detector", annotated)
+            cv2.imshow(win_name, display_frame)
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord("q"):
                 break
             elif key == ord("s"):
                 fname = f"capture_{int(time.time())}.jpg"
-                cv2.imwrite(fname, annotated)
-                print(f"💾 Saved: {fname}")
+                # Save the annotated frame so it's not "blank"
+                cv2.imwrite(fname, display_frame)
+                print(f"💾 Saved annotated capture: {fname}")
 
     finally:
         if use_picamera:
